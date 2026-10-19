@@ -1,0 +1,18 @@
+# Caddy terminates TLS (automatic Let's Encrypt, one certificate per domain) and proxies
+# each domain to its server. Domains come from deploy/.env via docker-compose.yml.
+(mcp_server) {
+	encode gzip
+	reverse_proxy {args[0]} {
+		flush_interval -1 # stream MCP responses without buffering
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		-Server
+	}
+}
+
+{$GARMIN_DOMAIN} {
+	import mcp_server garmin:8000
+}

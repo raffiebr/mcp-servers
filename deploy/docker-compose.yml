@@ -1,0 +1,31 @@
+# Everything on the VM: Caddy in front, one service per MCP server behind it.
+# ${...} values come from deploy/.env, which compose reads from this directory.
+name: mcp-servers
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      GARMIN_DOMAIN: ${GARMIN_DOMAIN:?set GARMIN_DOMAIN in deploy/.env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [garmin]
+
+  garmin:
+    build: ../servers/garmin
+    image: garmin-mcp:latest
+    restart: unless-stopped
+    env_file: /etc/mcp-servers/garmin.env   # secrets, written by fetch-secrets.sh (mode 600)
+    environment:
+      BASE_URL: https://${GARMIN_DOMAIN}
+      TIMEZONE: Asia/Singapore
+    volumes:
+      - /var/lib/mcp-servers/garmin:/data   # OAuth store + Garmin tokens (persistent disk)
+    expose: ["8000"]                        # reachable only from Caddy on the compose network
+
+volumes:
+  caddy_data: {}
+  caddy_config: {}
